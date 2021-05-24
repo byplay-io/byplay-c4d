@@ -2,4 +2,5 @@ import os
 
 
 def join(*args):
-    return os.path.join(*args).replace("\\", "/")
+    str_convert = str
+    return str_convert(os.path.join(*args).replace("\\", "/"))

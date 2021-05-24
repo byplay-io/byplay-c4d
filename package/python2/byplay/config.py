@@ -3,10 +3,9 @@ from __future__ import absolute_import
 import json
 import os
 import logging
-# from byplay.version import VERSION
+from byplay.version import VERSION
 from distutils.dir_util import mkpath
 from io import open
-VERSION = u'1.0.1'
 
 class Config(object):
     _recordings_dir = None

@@ -31,6 +31,8 @@ class RecordingLocalStorage(object):
 
     def list_env_exr_paths(self, recording_id):
         assets_path = join(Config.recordings_dir(), recording_id, u'assets')
+        if not os.path.exists(assets_path):
+            return []
         paths = [join(assets_path, p) for p in os.listdir(assets_path) if p.endswith(u".exr")]
         return paths
 

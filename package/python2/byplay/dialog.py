@@ -1,11 +1,15 @@
 from __future__ import with_statement
 from __future__ import division
 from __future__ import absolute_import
+import logging
+
 import c4d
 
 import byplay.c4d_scene_loader
+from byplay.backend.amplitude_logger import log_amplitude
+from byplay.backend.sentry import ExceptionCatcher
+from byplay.config import Config
 from byplay.recording_local_storage import RecordingLocalStorage
-
 
 
 def thumbnail_button_settings():
@@ -65,15 +69,21 @@ class ByplayDialog(c4d.gui.GeDialog):
 
     def __init__(self, doc):
         super(ByplayDialog, self).__init__()
-        self.doc = doc
-        self.recording_storage = RecordingLocalStorage()
-        self.recording_ids = list(reversed(self.recording_storage.list_recording_ids()))
-        self._value = 0
-        self._ids_by_names = {}
-        self._last_id = 100000
-        self.recording_thumbnail_image = None
-        self.recording_manifest = None
-        self.resolution = None
+        with ExceptionCatcher():
+            Config.setup_logger()
+            logging.info(u"Creating ByplayDialog")
+            log_amplitude(u"Opened ByplayDialog")
+            self.doc = doc
+            self.recording_storage = RecordingLocalStorage()
+            self.recording_ids = list(reversed(self.recording_storage.list_recording_ids()))
+            logging.info(u"Found {} recording ids".format(self.recording_ids))
+            self.recording_id = None
+            self._value = 0
+            self._ids_by_names = {}
+            self._last_id = 100000
+            self.recording_thumbnail_image = None
+            self.recording_manifest = None
+            self.resolution = None
 
     def AllocateId(self, name=None):
         if name is not None and name in self._ids_by_names:
@@ -100,83 +110,102 @@ class ByplayDialog(c4d.gui.GeDialog):
         )
 
     def FillRecordingIds(self):
+        self.FreeChildren(self.FetchId(u"recording_ids"))
         self.AddChild(self.FetchId(u"recording_ids"), 0, u"[ select ]")
         for i, v in enumerate(self.recording_ids):
             self.AddChild(self.FetchId(u"recording_ids"), i + 1, v)
 
     def CreateLayout(self):
-        with self.StartGroup(cols=2):
-            self.GroupBorderSpace(4, 4, 4, 4)
-            with self.StartGroup(rows=2, flags=c4d.BFH_SCALEFIT | c4d.BFV_TOP):
-                self.AddStaticText(id=self.AllocateId(), flags=0, name=u"Select recording id:")
-                self.AddComboBox(self.AllocateId(u"recording_ids"), c4d.BFH_SCALEFIT | c4d.BFV_TOP, 200, 20, False)
-                self.FillRecordingIds()
+        with ExceptionCatcher():
+            with self.StartGroup(cols=2):
+                self.GroupBorderSpace(4, 4, 4, 4)
+                with self.StartGroup(rows=2, flags=c4d.BFH_SCALEFIT | c4d.BFV_TOP):
+                    self.AddStaticText(id=self.AllocateId(), flags=0, name=u"Select recording id:")
 
-            with self.StartGroup(rows=2, init_width=150, init_height=200):
-                self.AddStaticText(
-                    id=self.AllocateId(u"recording_info"),
-                    flags=c4d.BFH_SCALEFIT | c4d.BFV_TOP,
-                    name=u"---------"
-                )
-                self.recording_thumbnail_image = self.AddCustomGui(
-                    self.AllocateId(),
-                    c4d.CUSTOMGUI_BITMAPBUTTON, u"",
-                    c4d.BFH_RIGHT | c4d.BFV_TOP, 0, 0,
-                    thumbnail_button_settings()
-                )
-        self.recording_thumbnail_image.SetImage(make_empty_bitmap(self.THUMBNAIL_SIZE))
-        self.AddDlgGroup(c4d.DLG_OK | c4d.DLG_CANCEL)
-        return True
+                    with self.StartGroup(rows=1, flags=c4d.BFH_SCALEFIT | c4d.BFV_TOP):
+                        self.AddComboBox(self.AllocateId(u"recording_ids"), c4d.BFH_SCALEFIT | c4d.BFV_TOP, 200, 20, False)
+                        self.FillRecordingIds()
+                        self.AddButton(id=self.AllocateId(u"refresh_recordings"), name=u"Refresh", flags=0)
+
+                with self.StartGroup(rows=2, init_width=150, init_height=200):
+                    self.AddStaticText(
+                        id=self.AllocateId(u"recording_info"),
+                        flags=c4d.BFH_SCALEFIT | c4d.BFV_TOP,
+                        name=u"---------"
+                    )
+                    self.recording_thumbnail_image = self.AddCustomGui(
+                        self.AllocateId(),
+                        c4d.CUSTOMGUI_BITMAPBUTTON, u"",
+                        c4d.BFH_RIGHT | c4d.BFV_TOP, 0, 0,
+                        thumbnail_button_settings()
+                    )
+            self.recording_thumbnail_image.SetImage(make_empty_bitmap(self.THUMBNAIL_SIZE))
+            self.AddDlgGroup(c4d.DLG_OK | c4d.DLG_CANCEL)
+            logging.info(u"Created the dialog")
+            return True
 
     def Command(self, id, msg):
-        if id == c4d.DLG_CANCEL:
-            self.Close()
-            return True
-
-        # print currently selected "child""
-        if id == self.FetchId(u"recording_ids"):
-            rec_id_number = self.GetInt32(self.FetchId(u"recording_ids")) - 1
-            if rec_id_number < 0:
-                return True
-            self.recording_id = self.recording_ids[rec_id_number]
-
-            bitmap = load_recording_bitmap(
-                self.recording_storage.thumbnail_path(self.recording_id),
-                self.THUMBNAIL_SIZE
-            )
-            self.resolution = get_image_size(self.recording_storage.first_frame_path(self.recording_id))
-            self.recording_thumbnail_image.SetImage(bitmap)
-
-            data = self.recording_storage.read_manifest(self.recording_id)
-            fps = int(data[u'fps'])
-            frames_count = int(data[u'framesCount'])
-            duration = int(frames_count / fps)
-            self.SetString(
-                self.FetchId(u"recording_info"),
-                u"{} fps; {} frames; {}s".format(fps, frames_count, duration)
-            )
-
-        if id == c4d.DLG_OK:
-            if self.recording_id is None:
-                c4d.gui.MessageDialog(u"Please select a recording first")
+        with ExceptionCatcher():
+            if id == c4d.DLG_CANCEL:
+                log_amplitude(u"Closed ByplayDialog")
+                self.Close()
                 return True
 
-            data = self.recording_storage.read_manifest(self.recording_id)
-            fps = int(data[u'fps'])
-            frames_count = int(data[u'framesCount'])
+            if id == self.FetchId(u"refresh_recordings"):
+                logging.info(u"Refreshing recordings")
+                self.recording_ids = list(reversed(self.recording_storage.list_recording_ids()))
+                self.FillRecordingIds()
+                return True
 
-            loader = byplay.c4d_scene_loader.ByplayC4DSceneLoader(
-                doc=self.doc,
-                recording_id=self.recording_id,
-                recording_storage=self.recording_storage,
-                frame_count=frames_count,
-                fps=fps,
-                resolution=self.resolution,
-                settings={}
-            )
-            loader.load()
+            # print currently selected "child""
+            if id == self.FetchId(u"recording_ids"):
+                rec_id_number = self.GetInt32(self.FetchId(u"recording_ids")) - 1
+                if rec_id_number < 0:
+                    return True
+                self.recording_id = self.recording_ids[rec_id_number]
+                logging.info(u"Changed recording id {} / {}".format(rec_id_number, self.recording_id))
 
-            self.Close()
-            return True
+                log_amplitude(u"Selected recording", recording_id=self.recording_id)
+                bitmap = load_recording_bitmap(
+                    self.recording_storage.thumbnail_path(self.recording_id),
+                    self.THUMBNAIL_SIZE
+                )
+                self.resolution = get_image_size(self.recording_storage.first_frame_path(self.recording_id))
+                self.recording_thumbnail_image.SetImage(bitmap)
 
-        return c4d.gui.GeDialog.Command(self, id, msg)
+                data = self.recording_storage.read_manifest(self.recording_id)
+                logging.info(u"Got manifest: {}".format(data))
+                fps = int(data[u'fps'])
+                frames_count = int(data[u'framesCount'])
+                duration = int(frames_count / fps)
+                self.SetString(
+                    self.FetchId(u"recording_info"),
+                    u"{} fps; {} frames; {}s".format(fps, frames_count, duration)
+                )
+
+            if id == c4d.DLG_OK:
+                logging.info(u"Loading recording {}".format(self.recording_id))
+                if self.recording_id is None:
+                    c4d.gui.MessageDialog(u"Please select a recording first")
+                    return True
+
+                data = self.recording_storage.read_manifest(self.recording_id)
+                fps = int(data[u'fps'])
+                frames_count = int(data[u'framesCount'])
+
+                loader = byplay.c4d_scene_loader.ByplayC4DSceneLoader(
+                    doc=self.doc,
+                    recording_id=self.recording_id,
+                    recording_storage=self.recording_storage,
+                    frame_count=frames_count,
+                    fps=fps,
+                    resolution=self.resolution,
+                    settings={}
+                )
+                loader.load()
+                logging.info(u"Loaded ok")
+                log_amplitude(u"Loaded recording", recording_id=self.recording_id)
+
+                self.Close()
+                return True
+            return c4d.gui.GeDialog.Command(self, id, msg)

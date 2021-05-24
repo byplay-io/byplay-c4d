@@ -1,5 +1,7 @@
 from __future__ import division
 from __future__ import absolute_import
+import logging
+
 import c4d
 
 from byplay.recording_local_storage import RecordingLocalStorage
@@ -92,7 +94,10 @@ class ByplayC4DSceneLoader(object):
             None
         )
         self._create_bg()
-        self._create_sky(self.recording_storage.list_env_exr_paths(self.recording_id)[0])
+        exrs = self.recording_storage.list_env_exr_paths(self.recording_id)
+        logging.info(u"Found exrs: {}".format(exrs))
+        if len(exrs) > 0:
+            self._create_sky(exrs[0])
         new_objects = self.doc.GetObjects()
         for o in new_objects:
             if o.GetGUID() not in existing_objects_ids:

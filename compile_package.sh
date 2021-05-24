@@ -10,6 +10,7 @@ dir_name="package/python2"
 clear_and_copy $dir_name
 3to2 --no-diffs -w -n $dir_name/byplay
 
+sed -i '' 's#str_convert = unicode#str_convert = str#' $dir_name/byplay/helpers.py
 find ./$dir_name/byplay -type f -exec sed -i '' 's#from typing .*##' {} \;
 
 clear_and_copy "package/python3"
