@@ -2,14 +2,8 @@ from __future__ import with_statement
 from __future__ import division
 from __future__ import absolute_import
 import c4d
-import glob
-import json
-import os
 
 import byplay.c4d_scene_loader
-from importlib import reload
-reload(byplay.c4d_scene_loader)
-from byplay.config import Config
 from byplay.recording_local_storage import RecordingLocalStorage
 
 
@@ -146,8 +140,6 @@ class ByplayDialog(c4d.gui.GeDialog):
                 return True
             self.recording_id = self.recording_ids[rec_id_number]
 
-            print self.recording_id
-            print self.recording_storage.thumbnail_path(self.recording_id)
             bitmap = load_recording_bitmap(
                 self.recording_storage.thumbnail_path(self.recording_id),
                 self.THUMBNAIL_SIZE
