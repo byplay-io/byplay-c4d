@@ -2,9 +2,12 @@ import c4d
 import sys
 import os
 
-from byplay.helpers import join
-
 PLUGIN_ID = 1057320
+
+
+def join(*args):
+    return os.path.join(*args).replace("\\", "/")
+
 
 if sys.version_info[0] == 2:
     sys.path.append(join("{{BYPLAY_PLUGIN_PATH}}", "python2"))
@@ -15,10 +18,6 @@ os.environ["BYPLAY_SYSTEM_DATA_PATH"] = "{{BYPLAY_DATA_PATH}}"
 os.environ["BYPLAY_PLUGIN_LOG_PATH"] = "{{BYPLAY_LOG_PATH}}"
 
 from byplay import dialog
-from importlib import reload
-print("HELLO")
-
-reload(dialog)
 
 
 class ByplayDialogCommand(c4d.plugins.CommandData):
@@ -43,6 +42,6 @@ if __name__ == "__main__":
     c4d.plugins.RegisterCommandPlugin(id=PLUGIN_ID,
                                       str="Import Byplay recording",
                                       info=0,
-                                      help="Display a basic GUI",
+                                      help="Imports video made with Byplay Camera and sets up the scene",
                                       dat=ByplayDialogCommand(),
                                       icon=None)
