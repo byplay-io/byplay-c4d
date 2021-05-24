@@ -1,1 +1,0 @@
-VERSION = ''.split('/')[-1]

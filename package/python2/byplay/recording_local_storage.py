@@ -4,7 +4,7 @@ import os
 import logging
 import json
 from byplay.config import Config
-from os.path import join
+from byplay.helpers import join
 from io import open
 
 

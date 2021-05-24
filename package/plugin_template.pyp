@@ -2,12 +2,14 @@ import c4d
 import sys
 import os
 
+from byplay.helpers import join
+
 PLUGIN_ID = 1057320
 
 if sys.version_info[0] == 2:
-    sys.path.append(os.path.join("{{BYPLAY_PLUGIN_PATH}}", "python2.7"))
+    sys.path.append(join("{{BYPLAY_PLUGIN_PATH}}", "python2"))
 else:
-    sys.path.append(os.path.join("{{BYPLAY_PLUGIN_PATH}}", "python3"))
+    sys.path.append(join("{{BYPLAY_PLUGIN_PATH}}", "python3"))
 
 os.environ["BYPLAY_SYSTEM_DATA_PATH"] = "{{BYPLAY_DATA_PATH}}"
 os.environ["BYPLAY_PLUGIN_LOG_PATH"] = "{{BYPLAY_LOG_PATH}}"
