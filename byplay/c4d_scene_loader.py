@@ -15,7 +15,7 @@ def remove_all(doc):
     [o.Remove() for o in os]
 
 
-def set_texture_backgroud(mat, first_frame_path, start_frame=0, end_frame=0, fps=30):
+def make_color_shader(first_frame_path, start_frame=0, end_frame=0, fps=30):
     color = c4d.BaseList2D(c4d.Xbitmap)
     flg = c4d.DESCFLAGS_SET_NONE
     color.SetParameter(c4d.BITMAPSHADER_FILENAME, first_frame_path, flg)
@@ -23,12 +23,21 @@ def set_texture_backgroud(mat, first_frame_path, start_frame=0, end_frame=0, fps
     color.SetParameter(c4d.BITMAPSHADER_TIMING_TO, end_frame, flg)
     color.SetParameter(c4d.BITMAPSHADER_TIMING_FPS, fps, flg)
     color.SetParameter(
-            c4d.BITMAPSHADER_TIMING_TIMING,
-            c4d.BITMAPSHADER_TIMING_TIMING_FRAME,
-            flg
-            )
-    mat[c4d.MATERIAL_COLOR_SHADER] = color
-    mat.InsertShader(color)
+        c4d.BITMAPSHADER_TIMING_TIMING,
+        c4d.BITMAPSHADER_TIMING_TIMING_FRAME,
+        flg
+    )
+    return color
+
+
+def assign_shader_color(mat, shader):
+    mat[c4d.MATERIAL_COLOR_SHADER] = shader
+    mat.InsertShader(shader)
+
+
+def assign_shader_luminance(mat, shader):
+    mat[c4d.MATERIAL_LUMINANCE_SHADER] = shader
+    mat.InsertShader(shader)
 
 
 def assign_material(doc, obj, mat, projection):
@@ -122,19 +131,29 @@ class ByplayC4DSceneLoader:
     def _create_bg(self):
         bg_obj = create_object(self.doc, "Background {}".format(self.recording_id), c4d.Obackground)
         bg_mat = c4d.BaseMaterial(c4d.Mmaterial)
-        set_texture_backgroud(
+        assign_shader_color(
             bg_mat,
-            self.recording_storage.first_frame_path(self.recording_id),
-            1,
-            self.frame_count,
-            self.fps
+            make_color_shader(
+                self.recording_storage.first_frame_path(self.recording_id),
+                1,
+                self.frame_count,
+                self.fps
+            )
         )
         assign_material_frontal(self.doc, bg_obj, bg_mat)
 
     def _create_sky(self, path):
         sky_obj = create_object(self.doc, "Sky {}".format(self.recording_id), c4d.Osky)
         sky_mat = c4d.BaseMaterial(c4d.Mmaterial)
-        set_texture_backgroud(sky_mat, path)
+        assign_shader_luminance(
+            sky_mat,
+            make_color_shader(path)
+        )
         assign_material_spherical(self.doc, sky_obj, sky_mat)
+        sky_mat.SetChannelState(c4d.CHANNEL_COLOR, False)
+        sky_mat.SetChannelState(c4d.CHANNEL_LUMINANCE, True)
         sky_obj[c4d.ID_BASEOBJECT_VISIBILITY_EDITOR] = c4d.OBJECT_OFF
+        comp_tag = c4d.BaseTag(c4d.Tcompositing)
+        sky_obj.InsertTag(comp_tag)
+        comp_tag[c4d.COMPOSITINGTAG_SEENBYCAMERA] = False
         return sky_obj
