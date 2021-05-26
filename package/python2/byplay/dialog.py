@@ -67,13 +67,12 @@ class GroupWrapper(object):
 class ByplayDialog(c4d.gui.GeDialog):
     THUMBNAIL_SIZE = 150
 
-    def __init__(self, doc):
+    def __init__(self, _doc):
         super(ByplayDialog, self).__init__()
         with ExceptionCatcher():
             Config.setup_logger()
             logging.info(u"Creating ByplayDialog")
             log_amplitude(u"Opened ByplayDialog")
-            self.doc = doc
             self.recording_storage = RecordingLocalStorage()
             self.recording_ids = list(reversed(self.recording_storage.list_recording_ids()))
             logging.info(u"Found {} recording ids".format(self.recording_ids))
@@ -194,7 +193,7 @@ class ByplayDialog(c4d.gui.GeDialog):
                 frames_count = int(data[u'framesCount'])
 
                 loader = byplay.c4d_scene_loader.ByplayC4DSceneLoader(
-                    doc=self.doc,
+                    doc=c4d.documents.GetActiveDocument(),
                     recording_id=self.recording_id,
                     recording_storage=self.recording_storage,
                     frame_count=frames_count,

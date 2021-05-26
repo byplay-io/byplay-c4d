@@ -46,5 +46,4 @@ def urlencode(data):
         return urllib.urlencode(data)
     else:
         import urllib2, urllib, urlparse
-        print data
         return urllib.urlencode(data)

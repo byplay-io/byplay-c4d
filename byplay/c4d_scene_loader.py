@@ -51,7 +51,6 @@ def assign_material(doc, obj, mat, projection):
     mat[c4d.MATERIAL_ANIMATEPREVIEW] = True
     mat[c4d.MATERIAL_PREVIEWSIZE] = c4d.MATERIAL_PREVIEWSIZE_NO_SCALE
 
-    mat.SetName(obj.GetName())
     c4d.EventAdd()
 
 
@@ -100,7 +99,7 @@ class ByplayC4DSceneLoader:
             c4d.SCENEFILTER_OBJECTS,
             None
         )
-        self._create_bg()
+        bg_mat = self._create_bg()
         exrs = self.recording_storage.list_env_exr_paths(self.recording_id)
         logging.info("Found exrs: {}".format(exrs))
         if len(exrs) > 0:
@@ -109,6 +108,8 @@ class ByplayC4DSceneLoader:
         for o in new_objects:
             if o.GetGUID() not in existing_objects_ids:
                 o.InsertUnder(target_null)
+                if o.GetName().lower() == "planes":
+                    self._assign_planes(o, bg_mat)
         self.set_render_settings()
 
     def set_timing(self):
@@ -141,6 +142,13 @@ class ByplayC4DSceneLoader:
             )
         )
         assign_material_frontal(self.doc, bg_obj, bg_mat)
+        bg_mat.SetName(bg_obj.GetName())
+        return bg_mat
+
+    def _add_compositing(self, obj):
+        comp_tag = c4d.BaseTag(c4d.Tcompositing)
+        obj.InsertTag(comp_tag)
+        return comp_tag
 
     def _create_sky(self, path):
         sky_obj = create_object(self.doc, "Sky {}".format(self.recording_id), c4d.Osky)
@@ -150,10 +158,30 @@ class ByplayC4DSceneLoader:
             make_color_shader(path)
         )
         assign_material_spherical(self.doc, sky_obj, sky_mat)
+        sky_mat.SetName(sky_obj.GetName())
         sky_mat.SetChannelState(c4d.CHANNEL_COLOR, False)
         sky_mat.SetChannelState(c4d.CHANNEL_LUMINANCE, True)
         sky_obj[c4d.ID_BASEOBJECT_VISIBILITY_EDITOR] = c4d.OBJECT_OFF
-        comp_tag = c4d.BaseTag(c4d.Tcompositing)
-        sky_obj.InsertTag(comp_tag)
+        comp_tag = self._add_compositing(sky_obj)
         comp_tag[c4d.COMPOSITINGTAG_SEENBYCAMERA] = False
         return sky_obj
+
+    def _byplay_plane_material(self):
+        name = "Byplay Plane"
+        for mat in self.doc.GetMaterials():
+            if mat.GetName() == name:
+                return mat
+
+        mat = c4d.BaseMaterial(c4d.Mshadowcatcher)
+        mat.SetName(name)
+        self.doc.InsertMaterial(mat)
+        return mat
+
+    def _assign_planes(self, planes_container, bg_material):
+        for plane in planes_container.GetChildren():
+            assign_material_frontal(self.doc, plane, bg_material)
+            comp_tag = self._add_compositing(plane)
+            comp_tag[c4d.COMPOSITINGTAG_CASTSHADOW] = False
+            comp_tag[c4d.COMPOSITINGTAG_BACKGROUND] = True
+            comp_tag[c4d.COMPOSITINGTAG_BACKGROUND_GI] = True
+            comp_tag[c4d.COMPOSITINGTAG_MATTEOBJECT] = True
