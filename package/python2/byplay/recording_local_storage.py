@@ -44,3 +44,6 @@ class RecordingLocalStorage(object):
         exists = os.path.exists(path)
         logging.info(u"rec: {} / {}".format(path, exists))
         return exists
+
+    def is_motion_only(self, recording_id):
+        return recording_id.endswith(u"_MO")

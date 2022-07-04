@@ -2,6 +2,7 @@ from __future__ import with_statement
 from __future__ import division
 from __future__ import absolute_import
 import logging
+import os.path
 
 import c4d
 
@@ -21,6 +22,8 @@ def thumbnail_button_settings():
 
 
 def get_image_size(path):
+    if not os.path.exists(path):
+        return None
     bitmap = c4d.bitmaps.BaseBitmap()
     bitmap.InitWith(path)
     return bitmap.GetSize()
@@ -199,6 +202,7 @@ class ByplayDialog(c4d.gui.GeDialog):
                     frame_count=frames_count,
                     fps=fps,
                     resolution=self.resolution,
+                    motion_only=self.recording_storage.is_motion_only(self.recording_id),
                     settings={}
                 )
                 loader.load()

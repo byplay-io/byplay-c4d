@@ -78,9 +78,11 @@ class ByplayC4DSceneLoader:
             frame_count, fps,
             recording_storage: RecordingLocalStorage,
             resolution: Union[Tuple[int, int], None],
+            motion_only: bool,
             settings):
         self.doc = doc
         self.recording_id = recording_id
+        self.motion_only = motion_only
         self.settings = settings
         self.frame_count = frame_count
         self.fps = fps
@@ -104,12 +106,13 @@ class ByplayC4DSceneLoader:
         logging.info("Found exrs: {}".format(exrs))
         if len(exrs) > 0:
             self._create_sky(exrs[0])
-        new_objects = self.doc.GetObjects()
-        for o in new_objects:
-            if o.GetGUID() not in existing_objects_ids:
-                o.InsertUnder(target_null)
-                if o.GetName().lower() == "planes":
-                    self._assign_planes(o, bg_mat)
+        if not self.motion_only:
+            new_objects = self.doc.GetObjects()
+            for o in new_objects:
+                if o.GetGUID() not in existing_objects_ids:
+                    o.InsertUnder(target_null)
+                    if o.GetName().lower() == "planes":
+                        self._assign_planes(o, bg_mat)
         self.set_render_settings()
 
     def set_timing(self):
@@ -130,6 +133,8 @@ class ByplayC4DSceneLoader:
         c4d.EventAdd()
 
     def _create_bg(self):
+        if self.motion_only:
+            return None
         bg_obj = create_object(self.doc, "Background {}".format(self.recording_id), c4d.Obackground)
         bg_mat = c4d.BaseMaterial(c4d.Mmaterial)
         assign_shader_color(
