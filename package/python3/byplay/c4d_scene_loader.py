@@ -106,13 +106,13 @@ class ByplayC4DSceneLoader:
         logging.info("Found exrs: {}".format(exrs))
         if len(exrs) > 0:
             self._create_sky(exrs[0])
-        if not self.motion_only:
-            new_objects = self.doc.GetObjects()
-            for o in new_objects:
-                if o.GetGUID() not in existing_objects_ids:
-                    o.InsertUnder(target_null)
-                    if o.GetName().lower() == "planes":
-                        self._assign_planes(o, bg_mat)
+
+        new_objects = self.doc.GetObjects()
+        for o in new_objects:
+            if o.GetGUID() not in existing_objects_ids:
+                o.InsertUnder(target_null)
+                if not self.motion_only and o.GetName().lower() == "planes":
+                    self._assign_planes(o, bg_mat)
         self.set_render_settings()
 
     def set_timing(self):
