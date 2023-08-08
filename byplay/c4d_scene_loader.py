@@ -130,6 +130,7 @@ class ByplayC4DSceneLoader:
         rdata[c4d.RDATA_XRES] = w
         rdata[c4d.RDATA_YRES] = h
         rdata[c4d.RDATA_FILMASPECT] = w / h
+        rdata[c4d.RDATA_FRAMERATE] = self.fps
         c4d.EventAdd()
 
     def _create_bg(self):
